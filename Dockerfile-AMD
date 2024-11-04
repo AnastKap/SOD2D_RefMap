@@ -1,0 +1,82 @@
+### Basic OS image that allows SOD2D to be built and tested
+
+## Import the base image
+FROM rocm/rocm-terminal:6.2.1
+
+USER root
+
+ARG PATH0="${PATH}"
+ARG LD_LIBRARY_PATH0="${LD_LIBRARY_PATH}"
+
+## Update and install basic system packages
+RUN apt-get -y update && apt-get -y upgrade
+RUN apt-get install -y build-essential git cmake gfortran ninja-build wget \
+        llvm clang flang flex pkg-config locales autoconf libtool
+RUN locale-gen en_US.UTF-8
+
+## Set the working dir to home
+WORKDIR /home
+
+## Create directory for installing additional libraries
+RUN mkdir -p apps/libraries
+RUN mkdir -p apps/compilers
+RUN mkdir -p apps/ucx
+
+## Download and install UCX-v1.14.1
+WORKDIR /home/apps/ucx
+RUN git clone https://github.com/openucx/ucx.git -b v1.14.1 .
+RUN ./autogen.sh
+RUN mkdir build
+WORKDIR /home/apps/ucx/build
+RUN ../contrib/configure-release --prefix=/apps/ucx/v1.14.1 --with-rocm=/opt/rocm-6.2.1 \
+        --without-cuda -enable-optimizations -disable-logging \
+        --disable-debug -disable-assertions \
+        --disable-params-check -without-java
+RUN make -j4
+RUN make install
+ENV PATH="/apps/ucx/v1.14.0/bin:${PATH}"
+
+## Download and install OpenMPI-5.0.x
+WORKDIR /home/apps/compilers
+RUN mkdir -p openMPI/5.0.x
+WORKDIR /home/apps/compilers/openMPI/5.0.x
+RUN git clone --recursive https://github.com/open-mpi/ompi.git \
+            -b v5.0.x .
+RUN ./autogen.pl
+RUN mkdir build
+WORKDIR /home/apps/compilers/openMPI/5.0.x/build
+#RUN tar -xvzf openmpi-4.1.4.tar.gz
+#WORKDIR /home/apps/compilers/openMPI/4.1.4/openmpi-4.1.4
+#RUN ./autogen.pl --force
+#RUN mkdir build-ucx
+#WORKDIR /home/apps/compilers/openMPI/4.1.4/openmpi-4.1.4/build-ucx
+#RUN ../configure --prefix=/apps/compilers/openMPI/4.1.4/gnu --with-ucx=/apps/ucx/v1.17.0
+#WORKDIR /home/apps/compilers/openMPI/4.1.4/openmpi-4.1.4
+RUN ../configure --with-rocm=/opt/rocm-6.2.1 --with-ucx=/apps/ucx/v1.14.1 \
+            --enable-mca-no-build=btl-uct --prefix=/apps/compilers/openMPI/5.0.x/gnu \
+            --enable-mpi1-compatibility CC=clang CXX=clang++ FC=flang
+RUN make -j 12 && make install
+# Set the PATH and LD_LIBRARY_PATH environment variables
+ENV PATH="/apps/compilers/openMPI/5.0.x/gnu/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/apps/compilers/openMPI/5.0.x/gnu/lib:${LD_LIBRARY_PATH}"
+
+## Download and install HDF5-1.12.0 enabling parallel and fortran support
+WORKDIR /home/apps/libraries
+RUN mkdir -p hdf5/1.14.5
+WORKDIR /home/apps/libraries/hdf5/1.14.5
+RUN wget https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.5.tar.gz
+RUN tar -xvzf hdf5_1.14.5.tar.gz
+WORKDIR /home/apps/libraries/hdf5/1.14.5/hdf5-hdf5_1.14.5
+RUN CPP=cpp CC=mpicc CXX=mpicxx FC=mpif90 CFLAGS=-fPIC FCFLAGS=-fPIC ./configure --prefix=/home/apps/libraries/hdf5/1.14.5/gnu --enable-threadsafe --enable-cxx --enable-fortran --enable-unsupported --enable-parallel
+RUN make -j 12 && make install
+# Set the PATH and LD_LIBRARY_PATH environment variables
+ENV PATH="/home/apps/libraries/hdf5/1.14.5/gnu/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/home/apps/libraries/hdf5/1.14.5/gnu/lib:${LD_LIBRARY_PATH}"
+ENV LIBRARY_PATH=${LD_LIBRARY_PATH}
+ENV HDF5_ROOT="/home/apps/libraries/hdf5/1.14.5/gnu"
+ENV HDF5_DIR="/home/apps/libraries/hdf5/1.14.5/gnu"
+
+## Set the working dir to /home/apps and create a folder for sod2d
+WORKDIR /home/apps
+RUN mkdir -p sod2d
+WORKDIR /home/apps/sod2d

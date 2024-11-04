@@ -15,6 +15,19 @@ include_directories(${CMAKE_BINARY_DIR}/modules)
 add_executable(${PROJECT_NAME} ${SRC_FILES})   # Build executable from listed sources
 set_property(TARGET ${PROJECT_NAME} PROPERTY LINKER_LANGUAGE Fortran)
 
+if(STORE_INTERMEDIATE_FILES)
+   # Generate .dot files for CFG visualization after each object file
+   # building (The NVIDIA opt tool must be used, otherwise the 
+   # debugging meta-data in the LLVM IR are not recognized)
+   add_custom_command(
+      TARGET ${PROJECT_NAME}
+      POST_BUILD
+      COMMAND for i in `find . -name *.dot`\; do rm $$i \; done
+      COMMAND for i in `find . -regex .*.gpu`\; do opt -dot-cfg-only $$i 2> /dev/null \; done
+      COMMENT "Creating CFG graphs of GPU kernels"
+   )
+endif()
+
 if(SHARED_LIBS)
    target_link_libraries(${PROJECT_NAME} lib_mainBaseClass)
 else()

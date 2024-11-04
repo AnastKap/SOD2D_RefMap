@@ -26,6 +26,7 @@ option(USE_MEM_MANAGED "Compile using Mem managed" OFF)
 option(USE_NCCL "Compile using NCCL" OFF)
 
 option(DEBUG_MODE "Set debug mode" OFF)
+option(STORE_INTERMEDIATE_FILES "Store CPU and GPU intermediate files" OFF)
 
 # Folder with files configuring extra CMake options
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")

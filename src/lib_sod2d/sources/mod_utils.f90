@@ -632,7 +632,8 @@ module mod_parTimer
       real(8) :: total_time, wc_start, wc_end, current_time
    contains
       procedure, public :: init_timer
-      procedure, public :: start_timer, stop_timer
+      procedure, public :: start_timer
+      procedure, public :: stop_timer
       procedure, public :: get_totalTime
    end type parTimer
 
