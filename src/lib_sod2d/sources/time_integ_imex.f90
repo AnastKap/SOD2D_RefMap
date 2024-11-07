@@ -1,6 +1,6 @@
 module time_integ_imex
 
-   use mod_nvtx
+   use mod_gpu_tracer
    use elem_convec
    use elem_diffu
    use elem_source
@@ -110,7 +110,7 @@ module time_integ_imex
       Rwmles_imex(1:npoin,1:ndime) = 0.0_rp
       !$acc end kernels
 
-      call nvtxEndRange
+      call EndRange
 
    end subroutine init_imex_solver
 
@@ -302,9 +302,9 @@ module time_integ_imex
                if (flag_buffer_on .eqv. .true.) call updateBuffer(npoin,npoin_w,coord,lpoin_w,rho(:,2),q(:,:,2),E(:,2),u_buffer)
 
                if (noBoundaries .eqv. .false.) then
-                  call nvtxStartRange("BCS_AFTER_UPDATE")
+                  call StartRange("BCS_AFTER_UPDATE")
                   call temporary_bc_routine_dirichlet_prim(npoin,nboun,bou_codes,bou_codes_nodes,bound,nbnodes,lbnodes,lnbn_nodes,normalsAtNodes,rho(:,2),q(:,:,2),u(:,:,2),pr(:,2),E(:,2),u_buffer)
-                  call nvtxEndRange
+                  call EndRange
                end if
 
                !$acc parallel loop
@@ -359,7 +359,7 @@ module time_integ_imex
 
             call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Reta_imex(:,2))
 
-            call nvtxStartRange("Entropy residual")
+            call StartRange("Entropy residual")
             !$acc parallel loop
             do ipoin = 1,npoin_w
                auxReta_imex(lpoin_w(ipoin)) = (1.5_rp*Reta_imex(lpoin_w(ipoin),2)-0.5_rp*Reta_imex(lpoin_w(ipoin),1)) !+ &
@@ -367,40 +367,40 @@ module time_integ_imex
                Reta_imex(lpoin_w(ipoin),1) = Reta_imex(lpoin_w(ipoin),2)            
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
             if (noBoundaries .eqv. .false.) then
-               call nvtxStartRange("BCS_AFTER_UPDATE")
+               call StartRange("BCS_AFTER_UPDATE")
                call bc_fix_dirichlet_residual_entropy(npoin,nboun,bou_codes,bou_codes_nodes,bound,nbnodes,lbnodes,lnbn_nodes,normalsAtNodes,auxReta_imex)
-               call nvtxEndRange
+               call EndRange
             end if
             !
             ! If using Sutherland viscosity model:
             !
             if (flag_real_diff == 1 .and. flag_diff_suth == 1) then
-               call nvtxStartRange("Sutherland viscosity")
+               call StartRange("Sutherland viscosity")
                call sutherland_viscosity(npoin,Tem(:,2),mu_factor,mu_fluid)
-               call nvtxEndRange
+               call EndRange
             end if
 
-            call nvtxStartRange("Entropy viscosity evaluation")
+            call StartRange("Entropy viscosity evaluation")
             !
             ! Compute entropy viscosity
             !
             call smart_visc_spectral_imex(nelem,npoin,npoin_w,connec,lpoin_w,auxReta_imex,Ngp,coord,dNgp,gpvol,wgp, &
                gamma_gas,rho(:,2),u(:,:,2),csound,Tem(:,2),eta(:,2),helem_l,helem,Ml,mu_e,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,mue_l)
-            call nvtxEndRange
+            call EndRange
             !
             ! Compute subgrid viscosity if active
             !
             if(flag_les == 1) then
-               call nvtxStartRange("MU_SGS")
+               call StartRange("MU_SGS")
                if(flag_les_ilsa == 1) then
                   call sgs_ilsa_visc(nelem,npoin,npoin_w,lpoin_w,connec,Ngp,dNgp,He,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,dt,rho(:,2),u(:,:,2),mu_sgs,mu_fluid,mu_e,kres,etot,au,ax1,ax2,ax3,mue_l) 
                else
                   call sgs_visc(nelem,npoin,connec,Ngp,dNgp,He,gpvol,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,rho(:,2),u(:,:,2),Ml,mu_sgs,mue_l)
                end if
-               call nvtxEndRange
+               call EndRange
             end if
          end subroutine imex_main
       end module time_integ_imex

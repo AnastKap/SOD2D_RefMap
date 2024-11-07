@@ -42,7 +42,7 @@ end module mod_arrays
 
 module CFDSolverBase_mod
       use mod_arrays
-      use mod_nvtx
+      use mod_gpu_tracer
 #ifndef NOACC
       use cudafor
 #endif
@@ -575,7 +575,7 @@ contains
    subroutine CFDSolverBase_openMesh(this)
       class(CFDSolverBase), intent(inout) :: this
 
-      call nvtxStartRange("Open mesh")
+      call StartRange("Open mesh")
 
       call set_hdf5_meshFile_name(this%mesh_h5_file_path,this%mesh_h5_file_name,mpi_size)
       call set_hdf5_baseResultsFile_name(this%results_h5_file_path,this%results_h5_file_name,this%mesh_h5_file_name,mpi_size)
@@ -594,7 +594,7 @@ contains
          call save_surface_mesh_hdf5_file(npbou,mesh_gmsh2ij,mesh_vtk2ij)
       end if
 
-      call nvtxEndRange
+      call EndRange
 
       call MPI_Barrier(app_comm,mpi_err)
 
@@ -785,7 +785,7 @@ contains
       real(rp) :: he_aux
       integer(4) :: iElem
 
-      call nvtxStartRange("Elem size compute")
+      call StartRange("Elem size compute")
       allocate(helem(numElemsRankPar))
       !$acc enter data create(helem(:))
       do iElem = 1,numElemsRankPar
@@ -793,7 +793,7 @@ contains
          helem(iElem) = he_aux
       end do
       !$acc update device(helem(:))
-      call nvtxEndRange
+      call EndRange
 
       call MPI_Barrier(app_comm,mpi_err)
 
@@ -803,7 +803,7 @@ contains
       class(CFDSolverBase), intent(inout) :: this
 
       if(mpi_rank.eq.0) write(111,*) "--| ALLOCATING MAIN VARIABLES"
-      call nvtxStartRange("Allocate main vars")
+      call StartRange("Allocate main vars")
       !
       ! Last rank is for prediction-advance related to entropy viscosity,
       ! where 1 is prediction, 2 is final value
@@ -965,7 +965,7 @@ contains
          !$acc end kernels
       end if
 
-      call nvtxEndRange
+      call EndRange
 
       call MPI_Barrier(app_comm,mpi_err)
 
@@ -975,11 +975,11 @@ contains
       class(CFDSolverBase), intent(inout) :: this
 
       if(mpi_rank.eq.0) write(111,*) "--| DEALLOCATING MAIN VARIABLES"
-      call nvtxStartRange("Deallocate main vars")
+      call StartRange("Deallocate main vars")
 
       !TO BE COMPLETED! NOT STRICTLY NECESSARY BUT IS GOOD TO DO IT AS GOOD PROGRAMMING PRACTICE :)
 
-      call nvtxEndRange
+      call EndRange
 
    end subroutine CFDSolverBase_deallocateVariables
 
@@ -1099,14 +1099,14 @@ contains
 
       if(mpi_rank.eq.0) write(111,*) "--| Evaluating initial mu_sgs..."
 
-      call nvtxStartRange("MU_SGS")
+      call StartRange("MU_SGS")
       if(flag_les_ilsa == 1) then
          this%dt = 1.0_rp !To avoid 0.0 division inside sgs_ilsa_visc calc
          call sgs_ilsa_visc(numElemsRankPar,numNodesRankPar,numWorkingNodesRankPar,workingNodesPar,connecParWork,Ngp,dNgp,He,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,this%dt,rho(:,2),u(:,:,2),mu_sgs,mu_fluid,mu_e,kres,etot,au,ax1,ax2,ax3,mue_l) 
       else
          call sgs_visc(numElemsRankPar,numNodesRankPar,connecParWork,Ngp,dNgp,He,gpvol,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,rho(:,2),u(:,:,2),Ml,mu_sgs,mue_l)
       end if
-      call nvtxEndRange
+      call EndRange
 
    end subroutine eval_initial_mu_sgs
 
@@ -1149,7 +1149,7 @@ contains
       ! Generate GLL table                                                  !
       !*********************************************************************!
       if(mpi_rank.eq.0) write(111,*) "--| GENERATING GAUSSIAN QUADRATURE TABLE..."
-      call nvtxStartRange("Gaussian Quadrature")
+      call StartRange("Gaussian Quadrature")
 
       !*********************************************************
       !           Allocating required arrays!
@@ -1206,7 +1206,7 @@ contains
 
       !-------------------------------------------------------------------------------
 
-      call nvtxEndRange
+      call EndRange
 
       !*********************************************************************!
       ! Generate N and dN for all GP                                        !
@@ -1215,7 +1215,7 @@ contains
       ! TODO: Allow for more element types
 
       if(mpi_rank.eq.0) write(111,*) "--| GENERATING SHAPE FUNCTIONS AND ISOPAR. DERIVATIVES..."
-      call nvtxStartRange("N and dN")
+      call StartRange("N and dN")
 
       do igaus = 1,ngaus
          s = xgp(igaus,1)
@@ -1239,7 +1239,7 @@ contains
       !$acc update device(Ngp_b(:,:))
       !$acc update device(dNgp_b(:,:,:))
 
-      call nvtxEndRange
+      call EndRange
 
       !
       ! Compute Levi-Civita tensor
@@ -1267,9 +1267,9 @@ contains
          if(mpi_rank.eq.0) write(111,*) "--| COMPUTING BOUNDARY ELEMENT NORMALS"
          allocate(boundNormalPar(numBoundsRankPar,ndime*npbou))
          !$acc enter data create(boundNormalPar(:,:))
-         call nvtxStartRange("Bou normals")
+         call StartRange("Bou normals")
          call boundary_normals(npbou,numNodesRankPar,numBoundsRankPar,boundParOrig,this%leviCivi,coordPar,dNgp_b,boundNormalPar)
-         call nvtxEndRange
+         call EndRange
          !$acc update device(boundNormalPar(:,:))
       end if
 
@@ -1288,14 +1288,14 @@ contains
 
       if(mpi_rank.eq.0) write(111,*) "--| GENERATING JACOBIAN RELATED INFORMATION..."
 
-      call nvtxStartRange("Jacobian info")
+      call StartRange("Jacobian info")
       allocate(He(ndime,ndime,ngaus,numElemsRankPar))
       allocate(gpvol(1,ngaus,numElemsRankPar))
       !$acc enter data create(He(:,:,:,:))
       !$acc enter data create(gpvol(:,:,:))
 
       call elem_jacobian(numElemsRankPar,numNodesRankPar,connecParOrig,coordPar,dNgp,wgp,gpvol,He)
-      call  nvtxEndRange
+      call  EndRange
       vol_rank  = 0.0
       vol_tot_d = 0.0
       !$acc parallel loop reduction(+:vol_rank)
@@ -1370,11 +1370,11 @@ contains
       !*********************************************************************!
 
       if(mpi_rank.eq.0) write(111,*) '--| COMPUTING LUMPED MASS MATRIX...'
-      call nvtxStartRange("Lumped mass compute")
+      call StartRange("Lumped mass compute")
       allocate(Ml(numNodesRankPar))
       !$acc enter data create(Ml(:))
       call lumped_mass_spectral(numElemsRankPar,numNodesRankPar,connecParWork,gpvol,Ml)
-      call nvtxEndRange
+      call EndRange
 
       !charecteristic length for spectral elements for the entropy
       !stablisation
@@ -1401,11 +1401,11 @@ contains
       !*********************************************************************!
       if (isMeshBoundaries) then
          do iCode = 1,numBoundCodes
-            call nvtxStartRange("Surface info")
+            call StartRange("Surface info")
             call surfInfo(0,0.0_rp,numElemsRankPar,numNodesRankPar,numBoundsRankPar,iCode,connecParWork,boundPar,point2elem,&
                bouCodesPar,boundNormalPar,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,wgp_b,dlxigp_ip,He,coordPar, &
                mu_fluid,mu_e,mu_sgs,rho(:,2),u(:,:,2),pr(:,2),this%surfArea,Fpr(:,iCode),Ftau(:,iCode))
-            call nvtxEndRange
+            call EndRange
          end do
       end if
 
@@ -1508,7 +1508,7 @@ contains
 
       call MPI_Barrier(app_comm,mpi_err)
 
-      call nvtxStartRange("Start RK4")
+      call StartRange("Start RK4")
       if(mpi_rank.eq.0) then
          write(*,*) 'Strarting evalTimeItarion! All info will be written in the log file: ',this%log_file_name
          write(111,*) 'Doing evalTimeIteration. Ini step:',this%initial_istep,'| End step:',this%final_istep
@@ -1518,7 +1518,7 @@ contains
 
       do istep = this%initial_istep,this%final_istep
          !if (istep==this%nsave.and.mpi_rank.eq.0) write(111,*) '   --| STEP: ', istep
-         call nvtxStartRange("Init pred "//timeStep,istep)
+         call StartRange("Init pred "//timeStep,istep)
          !$acc kernels
          rho(:,1) = rho(:,2)
          u(:,:,1) = u(:,:,2)
@@ -1529,12 +1529,12 @@ contains
          e_int(:,1) = e_int(:,2)
          eta(:,1) = eta(:,2)
          !$acc end kernels
-         call nvtxEndRange
+         call EndRange
 
          !
          ! Exponential averaging for wall law
          !
-         call nvtxStartRange("Wall Average "//timeStep,istep)
+         call StartRange("Wall Average "//timeStep,istep)
          if(flag_walave) then
             !
             ! outside acc kernels following pseudo_cfl in next loop
@@ -1545,9 +1545,9 @@ contains
             walave_u(:,:) = dtfact*u(:,:,2) + avwei*walave_u(:,:)
             !$acc end kernels
          end if
-         call nvtxEndRange
+         call EndRange
 
-         call nvtxStartRange("Time-step"//timeStep,istep)
+         call StartRange("Time-step"//timeStep,istep)
 
          if(this%doTimerAnalysis) iStepStartTime = MPI_Wtime()
          call this%callTimeIntegration(istep)
@@ -1592,17 +1592,17 @@ contains
          call this%evalDt()
 
          call this%afterDt(istep)
-         call nvtxEndRange
+         call EndRange
 
          if(this%saveAvgFile) then
             ! Update the accumulators for averaging
             if(this%time .ge. this%initial_avgTime) then
-               call nvtxStartRange("Accumulate"//timeStep,istep)
+               call StartRange("Accumulate"//timeStep,istep)
 
                call eval_average_iter(numElemsRankPar,numNodesRankPar,numWorkingNodesRankPar,workingNodesPar,connecParWork,this%dt,this%elapsed_avgTime,&
                                  rho,u,pr,mu_fluid,mu_e,mu_sgs,tauw,avrho,avpre,avvel,avve2,avvex,avmueff,avtw)
 
-               call nvtxEndRange
+               call EndRange
             end if
          end if
 
@@ -1611,12 +1611,12 @@ contains
 
             if (isMeshBoundaries) then
                do icode = 1,numBoundCodes
-                  call nvtxStartRange("Surface info")
+                  call StartRange("Surface info")
                   call surfInfo(istep,this%time,numElemsRankPar,numNodesRankPar,numBoundsRankPar,icode,connecParWork,boundPar,point2elem, &
                      bouCodesPar,boundNormalPar,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,wgp_b,dlxigp_ip,He,coordPar, &
                      mu_fluid,mu_e,mu_sgs,rho(:,2),u(:,:,2),pr(:,2),this%surfArea,Fpr(:,iCode),Ftau(:,iCode))
 
-                  call nvtxEndRange
+                  call EndRange
                   if(mpi_rank.eq.0) call flush(888+icode)
                end do
             end if
@@ -1629,14 +1629,14 @@ contains
 
             if(this%saveAvgFile) then
                if (mpi_rank.eq.0) write(111,*) '   - Saving avgResults file step:',this%restartFileCnt
-               call nvtxStartRange("Output AVG"//timeStep,istep)
+               call StartRange("Output AVG"//timeStep,istep)
                call this%saveAvgResultsFiles
-               call nvtxEndRange
+               call EndRange
             end if
 
-            call nvtxStartRange("Saving_restart_file"//timeStep,istep)
+            call StartRange("Saving_restart_file"//timeStep,istep)
             call this%saveRestartFile(istep)
-            call nvtxEndRange
+            call EndRange
 
          end if
 
@@ -1644,10 +1644,10 @@ contains
          if (this%save_resultsFile_next == istep) then
             this%save_resultsFile_next = this%save_resultsFile_next + this%save_resultsFile_step
             if (mpi_rank.eq.0) write(111,*) ' - Saving results file step:',istep,'(next to save',this%save_resultsFile_next,')'
-            call nvtxStartRange("Output "//timeStep,istep)
+            call StartRange("Output "//timeStep,istep)
             call compute_fieldDerivs(numElemsRankPar,numNodesRankPar,numWorkingNodesRankPar,workingNodesPar,connecParWork,lelpn,He,dNgp,this%leviCivi,dlxigp_ip,atoIJK,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,rho(:,2),u(:,:,2),gradRho,curlU,divU,Qcrit)
             call this%saveInstResultsFiles(istep)
-            call nvtxEndRange
+            call EndRange
          end if
 
 !         call this%afterDt(istep)
@@ -1687,7 +1687,7 @@ contains
             exit
          end if
       end do
-      call nvtxEndRange
+      call EndRange
 
       call this%endNSSolver()
 

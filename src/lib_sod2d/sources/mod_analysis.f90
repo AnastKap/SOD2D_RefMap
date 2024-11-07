@@ -2,7 +2,7 @@
 module mod_analysis
 
 	use mod_numerical_params
-	use mod_nvtx
+	use mod_gpu_tracer
 	use mod_mpi
 
 	contains
@@ -19,7 +19,7 @@ module mod_analysis
 			real(rp)                 :: R1
 			real(8)                  :: EK_l, EK_d
 
-			call nvtxStartRange("Compute EK")
+			call StartRange("Compute EK")
 			EK_l = 0.0
 			!$acc parallel loop gang reduction(+:EK_l)
 			do ielem = 1,nelem
@@ -39,7 +39,7 @@ module mod_analysis
 			call MPI_Allreduce(EK_l,EK_d,1,mpi_datatype_real8,MPI_SUM,app_comm,mpi_err)
 			EK = real(EK_d, rp)
 
-			call nvtxEndRange
+			call EndRange
 
 		end subroutine volAvg_EK
 
@@ -60,7 +60,7 @@ module mod_analysis
 			eps_D_l = 0.0
 			eps_T = 0.0_rp
 
-			call nvtxStartRange("Compute visc_dissipationRate")
+			call StartRange("Compute visc_dissipationRate")
 			!$acc parallel loop gang private(gradU,gpcar) reduction(+:eps_S_l,eps_D_l)
 			do ielem = 1,nelem
 				R1 = 0.0_rp
@@ -129,7 +129,7 @@ module mod_analysis
 				eps_D_l = eps_D_l+real(R2,8)
 			end do
 			!!$acc end parallel loop ! TODO: veriffy this
-			call nvtxEndRange
+			call EndRange
 
 			call MPI_Allreduce(eps_S_l,eps_S_d,1,mpi_datatype_real8,MPI_SUM,app_comm,mpi_err)
 			call MPI_Allreduce(eps_D_l,eps_D_d,1,mpi_datatype_real8,MPI_SUM,app_comm,mpi_err)

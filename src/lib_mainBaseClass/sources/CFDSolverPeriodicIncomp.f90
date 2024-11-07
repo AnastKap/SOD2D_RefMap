@@ -1,6 +1,6 @@
 module CFDSolverPeriodicIncomp_mod
    use mod_arrays
-   use mod_nvtx
+   use mod_gpu_tracer
 #ifndef NOACC
    use cudafor
 #endif

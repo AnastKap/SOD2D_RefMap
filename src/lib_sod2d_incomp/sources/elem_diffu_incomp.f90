@@ -1,6 +1,6 @@
 module elem_diffu_incomp
 
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_numerical_params
    
    use mod_mpi
@@ -31,7 +31,7 @@ module elem_diffu_incomp
              real(rp)                :: tauXl(nnode,ndime), tauYl(nnode,ndime), tauZl(nnode,ndime)
              real(rp)                :: gradRhol(nnode,ndime)
 
-             call nvtxStartRange("Full diffusion")
+             call StartRange("Full diffusion")
              !$acc kernels
              Rmom(:,:) = 0.0_rp
              !$acc end kernels
@@ -137,6 +137,6 @@ module elem_diffu_incomp
                 end do
              end do
              !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
         end subroutine full_diffusion_ijk_incomp
 end module elem_diffu_incomp

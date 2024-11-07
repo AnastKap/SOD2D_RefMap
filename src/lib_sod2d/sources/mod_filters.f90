@@ -1,6 +1,6 @@
 module mod_filters
    use mod_constants
-   use mod_nvtx
+   use mod_gpu_tracer
 
    implicit none
 
@@ -16,7 +16,7 @@ contains
       implicit none
       integer(4) :: ii
 
-      call nvtxStartRange("Init filters vars")
+      call StartRange("Init filters vars")
 
       allocate(al_weights(-1:1))
       !$acc enter data create(al_weights(:))
@@ -50,13 +50,13 @@ contains
       convertIJK(porder+2) = porder
       !$acc update device(convertIJK(:))
 
-      call nvtxEndRange
+      call EndRange
 
    end subroutine init_filters
 
    subroutine deallocate_filters()
 
-      call nvtxStartRange("Deallocating filters vars")
+      call StartRange("Deallocating filters vars")
 
       !$acc exit data delete(al_weights(:))
       deallocate(al_weights)
@@ -67,7 +67,7 @@ contains
       !$acc exit data delete(convertIJK(:))    
       deallocate(convertIJK)
 
-      call nvtxEndRange
+      call EndRange
 
    end subroutine deallocate_filters
 

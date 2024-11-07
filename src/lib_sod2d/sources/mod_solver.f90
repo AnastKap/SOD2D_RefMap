@@ -3,7 +3,7 @@ module mod_solver
 	use mod_numerical_params
 	use mod_comms
 	use mod_mpi
-	use mod_nvtx
+	use mod_gpu_tracer
 	use mod_time_ops
 	use mod_bc_routines
 	use elem_diffu
@@ -89,7 +89,7 @@ module mod_solver
 
            !if(mpi_rank.eq.0) write(111,*) "--|[IMEX] CG begin"
           
-          call nvtxStartRange("CG solver veloc")
+          call StartRange("CG solver veloc")
           if (flag_cg_mem_alloc_vars .eqv. .true.) then
 				allocate(x_vars(npoin,nvars), r0_vars(npoin,nvars), p0_vars(npoin,nvars), qn_vars(npoin,nvars), v_vars(npoin,nvars), b_vars(npoin,nvars),z0_vars(npoin,nvars),z1_vars(npoin,nvars),M_vars(npoin,nvars))
             	!$acc enter data create(x_vars(:,:), r0_vars(:,:), p0_vars(:,:), qn_vars(:,:), v_vars(:,:), b_vars(:,:),z0_vars(:,:),z1_vars(:,:),M_vars(:,:))
@@ -101,7 +101,7 @@ module mod_solver
            !
            ! Initialize solver
            !
-           call nvtxStartRange("CG_vars init")
+           call StartRange("CG_vars init")
             !$acc parallel loop
             do ipoin = 1,npoin
                !$acc loop seq
@@ -149,11 +149,11 @@ module mod_solver
 			
             !if(mpi_rank.eq.0) write(111,*) "--|[IMEX] CG before atomic"
 			   if(mpi_size.ge.2) then
-               call nvtxStartRange("CG_vars halo")
+               call StartRange("CG_vars halo")
                do ivars = 1,nvars 
                   call mpi_halo_atomic_update_real(qn_vars(:,ivars))
                end do
-               call nvtxEndRange
+               call EndRange
             end if
             
             !$acc parallel loop 
@@ -194,10 +194,10 @@ module mod_solver
            !
            ! Start iterations
            !
-           call nvtxStartRange("CG_vars iters")
+           call StartRange("CG_vars iters")
            
            do iter = 1,maxIter
-              call nvtxStartRange("Iter_vars")
+              call StartRange("Iter_vars")
               call full_diffusion_ijk(nelem,npoin,connec,Ngp,He,gpvol,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,Cp,Prt,x_vars(:,1),p0_vars(:,1),aux_u_vars,&
                  aux_Tem_vars,mu_fluid,mu_e,mu_sgs,Ml,qn_vars(:,1),qn_vars(:,3:nvars),qn_vars(:,2))              
 			      if(mpi_size.ge.2) then
@@ -266,7 +266,7 @@ module mod_solver
               ! Stop cond
               !
               if (sqrt(T1) .lt. (tol*auxB)) then
-                 call nvtxEndRange
+                 call EndRange
                  exit
               end if
               !
@@ -305,9 +305,9 @@ module mod_solver
             
                !if(mpi_rank.eq.0) write(111,*) "--|[IMEX] CG, iters: ",iter," tol ",sqrt(T1)/auxB
 
-              call nvtxEndRange
+              call EndRange
            end do
-           call nvtxEndRange
+           call EndRange
 
            if (iter == maxIter) then
                if(igtime==save_logFile_next.and.mpi_rank.eq.0) write(111,*) "--|[IMEX] CG, iters: ",iter," tol ",sqrt(T1)/auxB
@@ -328,7 +328,7 @@ module mod_solver
             
             !if(mpi_rank.eq.0) write(111,*) "--|[IMEX] CG end loop"
            
-           call nvtxEndRange
+           call EndRange
 
         end subroutine conjGrad_imex
 

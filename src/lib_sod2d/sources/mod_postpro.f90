@@ -1,7 +1,7 @@
 module mod_postpro
 
    use mod_numerical_params
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_mpi
    use mod_mpi_mesh
    use mod_hdf5
@@ -113,14 +113,14 @@ contains
       !$acc end parallel loop
 
       if(mpi_size.ge.2) then
-         call nvtxStartRange("MPI_comms_post")
+         call StartRange("MPI_comms_post")
          call mpi_halo_atomic_update_real(Qcrit)
          call mpi_halo_atomic_update_real(divU)
          do idime = 1,ndime
             call mpi_halo_atomic_update_real(curlU(:,idime))
             call mpi_halo_atomic_update_real(gradRho(:,idime))
          end do
-         call nvtxEndRange
+         call EndRange
       end if
 
       !$acc parallel loop

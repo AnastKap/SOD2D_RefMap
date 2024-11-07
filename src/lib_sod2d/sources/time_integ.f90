@@ -1,7 +1,7 @@
 
 module time_integ
 
-   use mod_nvtx
+   use mod_gpu_tracer
    use elem_convec
    use elem_diffu
    use elem_source
@@ -90,7 +90,7 @@ module time_integ
       !$acc update device(b_i(:))
       !$acc update device(c_i(:))
 
-      call nvtxEndRange
+      call EndRange
 
    end subroutine init_rk4_solver
 
@@ -202,7 +202,7 @@ module time_integ
             !
             ! Initialize variables to zero
             !
-            call nvtxStartRange("Initialize variables")
+            call StartRange("Initialize variables")
             !$acc kernels
             aux_rho(1:npoin) = 0.0_rp
             aux_u(1:npoin,1:ndime) = 0.0_rp
@@ -225,17 +225,17 @@ module time_integ
             Rmom_sum(1:npoin,1:ndime) = 0.0_rp
             !$acc end kernels
 
-            call nvtxEndRange
+            call EndRange
             !
             ! Loop over all RK steps
             !
-            call nvtxStartRange("Loop over RK steps")
+            call StartRange("Loop over RK steps")
 
             do istep = 1,flag_rk_order
                !
                ! Compute variable at substep (y_i = y_n+dt*A_ij*R_j)
                !
-               call nvtxStartRange("Update aux_*")
+               call StartRange("Update aux_*")
                !$acc parallel loop
                do ipoin = 1,npoin
                   aux_rho(ipoin) = rho(ipoin,pos) - dt*a_i(istep)*Rmass(ipoin)
@@ -246,7 +246,7 @@ module time_integ
                   end do
                end do
                !$acc end parallel loop
-               call nvtxEndRange
+               call EndRange
 
                if (flag_buffer_on .eqv. .true.) call updateBuffer(npoin,npoin_w,coord,lpoin_w,aux_rho,aux_q,aux_E,u_buffer)
 
@@ -254,15 +254,15 @@ module time_integ
                ! Apply bcs after update
                !
                if (noBoundaries .eqv. .false.) then
-                  call nvtxStartRange("BCS_AFTER_UPDATE")
+                  call StartRange("BCS_AFTER_UPDATE")
                   call temporary_bc_routine_dirichlet_prim(npoin,nboun,bou_codes,bou_codes_nodes,bound,nbnodes,lbnodes,lnbn_nodes,normalsAtNodes,aux_rho(:),aux_q(:,:),aux_u(:,:),aux_pr(:),aux_E(:),u_buffer)
-                  call nvtxEndRange
+                  call EndRange
                end if
 
                !
                ! Update velocity and equations of state
                !
-               call nvtxStartRange("Update u and EOS")
+               call StartRange("Update u and EOS")
                !$acc parallel loop
                do ipoin = 1,npoin_w
                   umag = 0.0_rp
@@ -283,26 +283,26 @@ module time_integ
                   end do
                end do
                !$acc end parallel loop
-               call nvtxEndRange
+               call EndRange
 
-               call nvtxStartRange("Entropy convection")
+               call StartRange("Entropy convection")
                call generic_scalar_convec_ijk(nelem,npoin,connec,Ngp,dNgp,He, &
                   gpvol,dlxigp_ip,xgp,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,f_eta,aux_eta(:),aux_u(:,:),Reta(:))
-               call nvtxEndRange
+               call EndRange
 
                if(mpi_size.ge.2) then
-                  call nvtxStartRange("MPI_comms_tI")
+                  call StartRange("MPI_comms_tI")
                   call mpi_halo_atomic_update_real(Reta(:))
-                  call nvtxEndRange
+                  call EndRange
                end if
 
                if (noBoundaries .eqv. .false.) then
                   call bc_fix_dirichlet_residual_entropy(npoin,nboun,bou_codes,bou_codes_nodes,bound,nbnodes,lbnodes,lnbn_nodes,normalsAtNodes,Reta)
                end if
 
-               call nvtxStartRange("Lumped solver")
+               call StartRange("Lumped solver")
                call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Reta)
-               call nvtxEndRange
+               call EndRange
                !
                ! Compute viscosities and diffusion
                !
@@ -310,29 +310,29 @@ module time_integ
                ! Update viscosity if Sutherland's law is active
                !
                if (flag_real_diff == 1 .and. flag_diff_suth == 1) then
-                  call nvtxStartRange("MU_SUT")
+                  call StartRange("MU_SUT")
                   call sutherland_viscosity(npoin,aux_Tem,mu_factor,mu_fluid)
-                  call nvtxEndRange
+                  call EndRange
                end if
                !
                ! Compute diffusion terms with values at current substep
                !
-               call nvtxStartRange("DIFFUSIONS")
+               call StartRange("DIFFUSIONS")
                call full_diffusion_ijk(nelem,npoin,connec,Ngp,He,gpvol,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,Cp,Prt,aux_rho,aux_rho,aux_u,aux_Tem,mu_fluid,mu_e,mu_sgs,Ml,Rdiff_mass,Rdiff_mom,Rdiff_ener)
-               call nvtxEndRange
+               call EndRange
                !
                ! Call source term if applicable
                !
                if(present(source_term)) then
-                  call nvtxStartRange("SOURCE TERM")
+                  call StartRange("SOURCE TERM")
                   call mom_source_const_vect(nelem,npoin,connec,Ngp,dNgp,He,gpvol,aux_u,source_term,Rdiff_mom)
-                  call nvtxEndRange
+                  call EndRange
                end if
                !
                ! Evaluate wall models
 
                if((isWallModelOn) .and. (numBoundsWM .ne. 0)) then
-                  call nvtxStartRange("WALL MODEL")
+                  call StartRange("WALL MODEL")
                   if(flag_walave) then
                      if(flag_type_wmles == wmles_type_reichardt) then
                         call evalWallModelReichardt(numBoundsWM,listBoundsWM,nelem,npoin,nboun,connec,bound,point2elem,bou_codes,&
@@ -351,51 +351,51 @@ module time_integ
                         stop 1
                      end if
                   end if
-                  call nvtxEndRange
+                  call EndRange
                end if
                !
                !
                ! Compute convective terms
                !
-               call nvtxStartRange("CONVECTIONS")
+               call StartRange("CONVECTIONS")
                if(flag_total_enthalpy .eqv. .true.) then
                   call full_convec_ijk_H(nelem,npoin,connec,Ngp,dNgp,He,gpvol,dlxigp_ip,xgp,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,aux_u,aux_q,aux_rho,aux_pr,aux_E,Rmass(:),Rmom(:,:),Rener(:))
                else 
                   call full_convec_ijk(nelem,npoin,connec,Ngp,dNgp,He,gpvol,dlxigp_ip,xgp,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,aux_u,aux_q,aux_rho,aux_pr,aux_h,Rmass(:),Rmom(:,:),Rener(:))
                end if
-               call nvtxEndRange
+               call EndRange
 
-               call nvtxStartRange("Add convection and diffusion")
+               call StartRange("Add convection and diffusion")
                !$acc kernels
                Rmass(:) = Rmass(:) + Rdiff_mass(:)
                Rener(:) = Rener(:) + Rdiff_ener(:)
                Rmom(:,:) = Rmom(:,:) + Rdiff_mom(:,:)
                !$acc end kernels
-               call nvtxEndRange
+               call EndRange
 
                !TESTING NEW LOCATION FOR MPICOMMS
                if(mpi_size.ge.2) then
-                  call nvtxStartRange("MPI_comms_tI")
+                  call StartRange("MPI_comms_tI")
                   call mpi_halo_atomic_update_real(Rmass(:))
                   call mpi_halo_atomic_update_real(Rener(:))
                   do idime = 1,ndime
                      call mpi_halo_atomic_update_real(Rmom(:,idime))
                   end do
-                  call nvtxEndRange
+                  call EndRange
                end if
 
                !
                ! Call lumped mass matrix solver
                !
-               call nvtxStartRange("Call solver")
+               call StartRange("Call solver")
                call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rmass(:))
                call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rener(:))
                call lumped_solver_vect(npoin,npoin_w,lpoin_w,Ml,Rmom(:,:))
-               call nvtxEndRange
+               call EndRange
                !
                ! Accumulate the residuals
                !
-               call nvtxStartRange("Accumulate residuals")
+               call StartRange("Accumulate residuals")
                !$acc parallel loop
                do ipoin = 1,npoin
                   Rmass_sum(ipoin) = Rmass_sum(ipoin) + b_i(istep)*Rmass(ipoin)
@@ -407,13 +407,13 @@ module time_integ
                   end do
                end do
                !$acc end parallel loop
-               call nvtxEndRange
+               call EndRange
             end do
-            call nvtxEndRange
+            call EndRange
             !
             ! RK update to variables
             !
-            call nvtxStartRange("RK_UPDATE")
+            call StartRange("RK_UPDATE")
             !$acc parallel loop
             do ipoin = 1,npoin
                rho(ipoin,pos) = rho(ipoin,pos)-dt*Rmass_sum(ipoin)
@@ -424,7 +424,7 @@ module time_integ
                end do
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
             if (flag_buffer_on .eqv. .true.) call updateBuffer(npoin,npoin_w,coord,lpoin_w,rho(:,pos),q(:,:,pos),E(:,pos),u_buffer)
 
@@ -432,15 +432,15 @@ module time_integ
             ! Apply bcs after update
             !
             if (noBoundaries .eqv. .false.) then
-               call nvtxStartRange("BCS_AFTER_UPDATE")
+               call StartRange("BCS_AFTER_UPDATE")
                call temporary_bc_routine_dirichlet_prim(npoin,nboun,bou_codes,bou_codes_nodes,bound,nbnodes,lbnodes,lnbn_nodes,normalsAtNodes,rho(:,pos),q(:,:,pos),u(:,:,pos),pr(:,pos),E(:,pos),u_buffer)
-               call nvtxEndRange
+               call EndRange
             end if
 
             !
             ! Update velocity and equations of state
             !
-            call nvtxStartRange("Update u and EOS")
+            call StartRange("Update u and EOS")
 
             !$acc parallel loop
             do ipoin = 1,npoin_w
@@ -461,48 +461,48 @@ module time_integ
                   log(pr(lpoin_w(ipoin),pos)/(rho(lpoin_w(ipoin),pos)**gamma_gas))
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
-            call nvtxStartRange("Entropy residual")
+            call StartRange("Entropy residual")
             !$acc parallel loop
             do ipoin = 1,npoin_w
                Reta(lpoin_w(ipoin)) =  -Reta_sum(lpoin_w(ipoin))!-(eta(lpoin_w(ipoin),2)-eta(lpoin_w(ipoin),1))/dt
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
             if (noBoundaries .eqv. .false.) then
-               call nvtxStartRange("BCS_AFTER_UPDATE")
+               call StartRange("BCS_AFTER_UPDATE")
                call bc_fix_dirichlet_residual_entropy(npoin,nboun,bou_codes,bou_codes_nodes,bound,nbnodes,lbnodes,lnbn_nodes,normalsAtNodes,Reta)
-               call nvtxEndRange
+               call EndRange
             end if
             !
             ! If using Sutherland viscosity model:
             !
             if (flag_real_diff == 1 .and. flag_diff_suth == 1) then
-               call nvtxStartRange("Sutherland viscosity")
+               call StartRange("Sutherland viscosity")
                call sutherland_viscosity(npoin,Tem(:,pos),mu_factor,mu_fluid)
-               call nvtxEndRange
+               call EndRange
             end if
 
-            call nvtxStartRange("Entropy viscosity evaluation")
+            call StartRange("Entropy viscosity evaluation")
             !
             ! Compute entropy viscosity
             !
             call smart_visc_spectral(nelem,npoin,npoin_w,connec,lpoin_w,Reta,Ngp,coord,dNgp,gpvol,wgp, &
                gamma_gas,rho(:,pos),u(:,:,pos),csound,Tem(:,pos),eta(:,pos),helem_l,helem,Ml,mu_e,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,mue_l)
-            call nvtxEndRange
+            call EndRange
             !
             ! Compute subgrid viscosity if active
             !
             if(flag_les == 1) then
-               call nvtxStartRange("MU_SGS")
+               call StartRange("MU_SGS")
                if(flag_les_ilsa == 1) then
                   call sgs_ilsa_visc(nelem,npoin,npoin_w,lpoin_w,connec,Ngp,dNgp,He,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,dt,rho(:,pos),u(:,:,pos),mu_sgs,mu_fluid,mu_e,kres,etot,au,ax1,ax2,ax3,mue_l) 
                else
                   call sgs_visc(nelem,npoin,connec,Ngp,dNgp,He,gpvol,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,rho(:,pos),u(:,:,pos),Ml,mu_sgs,mue_l)
                end if
-               call nvtxEndRange
+               call EndRange
             end if
 
          end subroutine rk_4_main
@@ -524,7 +524,7 @@ module time_integ
 
             E_inf = (nscbc_rho_inf*0.5_rp*nscbc_u_inf**2 + nscbc_p_inf/(nscbc_gamma_inf-1.0_rp))
 
-            call nvtxStartRange("Update buffer")
+            call StartRange("Update buffer")
             !$acc parallel loop
             do ipoin = 1,npoin_w
                xi = 1.0_rp
@@ -585,7 +585,7 @@ module time_integ
                rho(lpoin_w(ipoin)) = nscbc_rho_inf + xi*(rho(lpoin_w(ipoin))-nscbc_rho_inf)
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
          end subroutine updateBuffer
 
       end module time_integ

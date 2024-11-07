@@ -1,7 +1,7 @@
 module mod_sgs_ilsa_viscosity
 
    use mod_numerical_params
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_filters,only:convertIJK,al_weights,am_weights,an_weights
 
    ! TODO: Finish module and create unit tests

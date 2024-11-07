@@ -1,7 +1,7 @@
 module mod_entropy_viscosity_incomp
 
    use mod_numerical_params
-   use mod_nvtx
+   use mod_gpu_tracer
    
    use mod_mpi
    use mod_mpi_mesh
@@ -33,7 +33,7 @@ module mod_entropy_viscosity_incomp
               integer(4)              :: ii,jj,kk,mm,nn,ll
 
 
-              call nvtxStartRange("envit_incomp")
+              call StartRange("envit_incomp")
               !$acc kernels
                mue_l(:,:) = mu_e(:,:)
                !$acc end kernels
@@ -45,7 +45,7 @@ module mod_entropy_viscosity_incomp
              !$acc end kernels
 
               if(flag_normalise_entropy .eq. 1) then
-                 call nvtxStartRange("norm")
+                 call StartRange("norm")
                  maxEta_r = 0.0_rp
                  !$acc parallel loop reduction(+:maxEta_r)
                  do ipoin = 1,npoin_w
@@ -66,12 +66,12 @@ module mod_entropy_viscosity_incomp
                  !$acc end parallel loop
 
                  call MPI_Allreduce(norm_r,norm,1,mpi_datatype_real,MPI_MAX,app_comm,mpi_err)
-                 call nvtxEndRange
+                 call EndRange
               else
                  norm = 1.0_rp
               end if
 
-              call nvtxStartRange("mue_incomp")
+              call StartRange("mue_incomp")
               !$acc parallel loop gang
               do ielem = 1,nelem
                 maxJe=0.0_rp
@@ -119,7 +119,7 @@ module mod_entropy_viscosity_incomp
                 end do
               end do
               !$acc end parallel loop
-              call nvtxEndRange
-              call nvtxEndRange
+              call EndRange
+              call EndRange
       end subroutine smart_visc_spectral_incomp
 end module mod_entropy_viscosity_incomp

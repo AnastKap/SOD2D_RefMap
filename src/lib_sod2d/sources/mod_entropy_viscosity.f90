@@ -1,7 +1,7 @@
 module mod_entropy_viscosity
 
    use mod_numerical_params
-   use mod_nvtx
+   use mod_gpu_tracer
    
    use mod_mpi
    use mod_mpi_mesh

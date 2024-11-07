@@ -1,6 +1,6 @@
 module ChannelFlowSolver_mod
    use mod_arrays
-   use mod_nvtx
+   use mod_gpu_tracer
 #ifndef NOACC
    use cudafor
 #endif
@@ -234,7 +234,7 @@ contains
       ax3(:) = 0.0_rp
       au(:,:) = 0.0_rp
       !$acc end kernels
-      call nvtxEndRange
+      call EndRange
 
       !$acc parallel loop
       do iNodeL = 1,numNodesRankPar
@@ -245,13 +245,13 @@ contains
       !
       ! Initialize exponential averaging for wall law 
       !
-      call nvtxStartRange("Wall Average init")
+      call StartRange("Wall Average init")
       if(flag_walave) then
          !$acc kernels
          walave_u(:,:) = u(:,:,2)
          !$acc end kernels
       end if
-      call nvtxEndRange
+      call EndRange
 
    end subroutine ChannelFlowSolver_evalInitialConditions
 

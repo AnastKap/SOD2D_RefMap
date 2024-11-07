@@ -1,6 +1,6 @@
 module mod_operators
 
-        use mod_nvtx
+        use mod_gpu_tracer
         use mod_numerical_params
    
         use mod_mpi
@@ -38,7 +38,7 @@ module mod_operators
                !$acc enter data create(op_auxP(:))
             end if
 
-            call nvtxStartRange("Eval laplacian mult")
+            call StartRange("Eval laplacian mult")
             !$acc kernels
              ResP(:) = 0.0_rp
              op_auxP(:) = p(:)
@@ -116,11 +116,11 @@ module mod_operators
              !$acc end parallel loop
 
             if(mpi_size.ge.2) then
-               call nvtxStartRange("MPI_comms_tI")
+               call StartRange("MPI_comms_tI")
                call mpi_halo_atomic_update_real(ResP(:))
-               call nvtxEndRange
+               call EndRange
             end if
-            call nvtxEndRange
+            call EndRange
 
             if((mpi_rank.eq.0) .and. (flag_fs_fix_pressure .eqv. .true.)) then
                ResP(lpoin_w(1)) = 0.0_rp
@@ -155,10 +155,10 @@ module mod_operators
                op_auxP(lpoin_w(1)) = nscbc_p_inf
             end if
 
-            call nvtxStartRange("Eval laplacian mult2")
+            call StartRange("Eval laplacian mult2")
             call eval_gradient(nelem,npoin,npoin_w,connec,lpoin_w,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,dlxigp_ip,He,gpvol,Ml,op_auxP,op_auxGradP,.true.)
             call eval_divergence(nelem,npoin,connec,He,gpvol,dlxigp_ip,invAtoIJK,gmshAtoI,gmshAtoJ,gmshAtoK,op_auxGradP,ResP)
-            call nvtxEndRange
+            call EndRange
 
             if(mpi_rank.eq.0) then
                ResP(lpoin_w(1)) = 0.0_rp
@@ -181,7 +181,7 @@ module mod_operators
             real(rp)                :: gradP(ndime),divDp
             real(rp)                :: pl(nnode),gradPl(nnode,ndime)
 
-            call nvtxStartRange("Eval grad")
+            call StartRange("Eval grad")
             !$acc kernels
              gradX(:,:) = 0.0_rp
             !$acc end kernels
@@ -240,22 +240,22 @@ module mod_operators
 
             if(lump .eqv. .true.) then
                if(mpi_size.ge.2) then
-                  call nvtxStartRange("MPI_comms_tI")
+                  call StartRange("MPI_comms_tI")
                   do idime = 1,ndime
                      call mpi_halo_atomic_update_real(gradX(:,idime))
                   end do
-                  call nvtxEndRange
+                  call EndRange
                end if
                
                !
                ! Call lumped mass matrix solver
                !
             
-               call nvtxStartRange("Call solver")
+               call StartRange("Call solver")
                call lumped_solver_vect(npoin,npoin_w,lpoin_w,Ml,gradX(:,:))
-               call nvtxEndRange
+               call EndRange
             end if
-            call nvtxEndRange
+            call EndRange
 
     end subroutine eval_gradient
 
@@ -275,7 +275,7 @@ module mod_operators
             real(rp)                :: divU,Re_mom(nnode),gradIsoU(ndime,ndime),ul(nnode,ndime)
             real(rp), dimension(porder+1) :: dlxi_ip, dleta_ip, dlzeta_ip
 
-            call nvtxStartRange("Eval div")
+            call StartRange("Eval div")
             !$acc kernels
             Rmom(:) = 0.0_rp
             !$acc end kernels
@@ -341,11 +341,11 @@ module mod_operators
             !$acc end parallel loop
 
             if(mpi_size.ge.2) then
-               call nvtxStartRange("MPI_comms_tI")
+               call StartRange("MPI_comms_tI")
                call mpi_halo_atomic_update_real(Rmom(:))
-               call nvtxEndRange
+               call EndRange
             end if
-            call nvtxEndRange
+            call EndRange
     end subroutine eval_divergence
 
     subroutine eval_laplacian_BDL(nelem,npoin,connec,He,dNgp,invAtoIJK,gpvol,diag,L)
@@ -359,7 +359,7 @@ module mod_operators
             integer(4)               :: ielem, igaus, idime, inode,jnode,knode
             real(rp)                  :: gpcar(ndime,nnode),tmp,A(nnode,nnode)
 
-            call nvtxStartRange("Eval laplacian BDL")
+            call StartRange("Eval laplacian BDL")
             !$acc parallel loop gang  private(gpcar,A)
             do ielem = 1,nelem
                !$acc loop vector collapse(2)
@@ -410,7 +410,7 @@ module mod_operators
                end do
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
     end subroutine eval_laplacian_BDL
 
@@ -424,7 +424,7 @@ module mod_operators
             integer(4)               :: ielem, igaus, idime, inode,jnode,knode
             real(rp)                  :: gpcar(ndime,nnode),tmp
 
-            call nvtxStartRange("Eval lapl diag")
+            call StartRange("Eval lapl diag")
             !$acc kernels
             d(:) = 0.0_rp
             !$acc end kernels
@@ -452,11 +452,11 @@ module mod_operators
             !$acc end parallel loop
             
             if(mpi_size.ge.2) then
-               call nvtxStartRange("MPI_comms_tI")
+               call StartRange("MPI_comms_tI")
                call mpi_halo_atomic_update_real(d(:))
-               call nvtxEndRange
+               call EndRange
             end if
-            call nvtxEndRange
+            call EndRange
 
     end subroutine eval_laplacian_diag
 end module mod_operators

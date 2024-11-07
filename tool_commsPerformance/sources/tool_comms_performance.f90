@@ -90,9 +90,9 @@ program tool_commsPerfomance
    call test_comms_performance_real(numIters)
 
 
-   !call nvtxStartRange("saxpy loop")
+   !call StartRange("saxpy loop")
    !call do_saxpy_loop(numIters)
-   !call nvtxEndRange
+   !call EndRange
    !call test_mpi_cudaware(numNodesSrl,numIters)
    !call do_crazy_mpi_test(numNodesSrl,numIters)
 

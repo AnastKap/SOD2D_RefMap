@@ -4,7 +4,7 @@ module mod_bc_routines_incomp
    use mod_numerical_params
    use mod_comms
    use mod_comms_boundaries
-   use mod_nvtx
+   use mod_gpu_tracer
 
    implicit none
 

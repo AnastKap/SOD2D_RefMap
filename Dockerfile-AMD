@@ -11,7 +11,7 @@ ARG LD_LIBRARY_PATH0="${LD_LIBRARY_PATH}"
 ## Update and install basic system packages
 RUN apt-get -y update && apt-get -y upgrade
 RUN apt-get install -y build-essential git cmake gfortran ninja-build wget \
-        llvm clang flang flex pkg-config locales autoconf libtool
+        llvm clang flang flex pkg-config locales autoconf libtool gdb
 RUN locale-gen en_US.UTF-8
 
 ## Set the working dir to home
@@ -58,7 +58,7 @@ RUN ../configure --with-rocm=/opt/rocm-6.2.1 --with-ucx=/apps/ucx/v1.14.1 \
 RUN make -j 12 && make install
 # Set the PATH and LD_LIBRARY_PATH environment variables
 ENV PATH="/apps/compilers/openMPI/5.0.x/gnu/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/apps/compilers/openMPI/5.0.x/gnu/lib:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH="/opt/rocm-6.2.1/llvm/lib:/apps/compilers/openMPI/5.0.x/gnu/lib:${LD_LIBRARY_PATH}"
 
 ## Download and install HDF5-1.12.0 enabling parallel and fortran support
 WORKDIR /home/apps/libraries

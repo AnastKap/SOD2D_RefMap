@@ -2,7 +2,7 @@ module mod_time_ops
 
    use mod_numerical_params
    
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_mpi
    use mod_comms
 
@@ -23,7 +23,7 @@ contains
       real(rp)                          :: dt_l,dt_conv,dt_diff
       real(rp)                          :: umag, aux1, aux2, aux4, L3, max_MU
 
-      call nvtxStartRange("Adapting dt")
+      call StartRange("Adapting dt")
       dt_conv = 100000000000000.0_rp
       dt_diff = 100000000000000.0_rp
       dt_l    = 100000000000000.0_rp
@@ -56,7 +56,7 @@ contains
          !$acc end parallel loop
          call MPI_Allreduce(dt_l,dt,1,mpi_datatype_real,MPI_MIN,app_comm,mpi_err)
       end if
-      call nvtxEndRange
+      call EndRange
 
       end subroutine adapt_dt_cfl
 
@@ -74,7 +74,7 @@ contains
       integer(4)                        :: inode,iElem
       real(rp)                          :: umag, aux1, aux2, aux4, L3, max_MU
 
-      call nvtxStartRange("Adapting dt")
+      call StartRange("Adapting dt")
 
       !$acc kernels
       dt(:) = 100000000000000.0_rp
@@ -103,11 +103,11 @@ contains
          end if
       end do
       !$acc end parallel loop
-      call nvtxEndRange
+      call EndRange
       if(mpi_size.ge.2) then
-         call nvtxStartRange("MPI_comms_tI")
+         call StartRange("MPI_comms_tI")
             call mpi_halo_atomic_min_update_real_sendRcv(dt)
-         call nvtxEndRange
+         call EndRange
       end if
       end subroutine adapt_local_dt_cfl
 
@@ -125,7 +125,7 @@ contains
       integer(4)                        :: inode,iElem
       real(rp)                          :: umag, aux1, aux2, aux4, L3, max_MU
 
-      call nvtxStartRange("Adapting dt")
+      call StartRange("Adapting dt")
 
       !$acc kernels
       dt(:) = 100000000000000.0_rp
@@ -153,11 +153,11 @@ contains
          end if
       end do
       !$acc end parallel loop
-      call nvtxEndRange
+      call EndRange
       if(mpi_size.ge.2) then
-         call nvtxStartRange("MPI_comms_tI")
+         call StartRange("MPI_comms_tI")
             call mpi_halo_atomic_min_update_real_sendRcv(dt)
-         call nvtxEndRange
+         call EndRange
       end if
       end subroutine adapt_local_dt_cfl_incomp
 
@@ -176,7 +176,7 @@ subroutine expl_adapt_dt_cfl(nelem,npoin,connec,helem,u,csound,cfl_conv,dt,cfl_d
       real(rp)                          :: dt_l,dt_conv,dt_diff
       real(rp)                          :: umag, aux1, aux2, aux4, L3, max_MU
 
-      call nvtxStartRange("Adapting dt")
+      call StartRange("Adapting dt")
       dt_conv = 100000000000000.0_rp
       dt_diff = 100000000000000.0_rp
       dt_l    = 100000000000000.0_rp
@@ -208,7 +208,7 @@ subroutine expl_adapt_dt_cfl(nelem,npoin,connec,helem,u,csound,cfl_conv,dt,cfl_d
       end do
       !$acc end parallel loop
       call MPI_Allreduce(dt_l,dt,1,mpi_datatype_real,MPI_MIN,app_comm,mpi_err)
-      call nvtxEndRange
+      call EndRange
 
    end subroutine expl_adapt_dt_cfl
 

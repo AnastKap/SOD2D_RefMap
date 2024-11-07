@@ -1,6 +1,6 @@
 module TGVCompSolver_mod
    use mod_arrays
-   use mod_nvtx
+   use mod_gpu_tracer
 #ifndef NOACC
    use cudafor
 #endif
@@ -153,7 +153,7 @@ contains
       ax3(:) = 0.0_rp
       au(:,:) = 0.0_rp
       !$acc end kernels
-      call nvtxEndRange
+      call EndRange
 
       !$acc parallel loop
       do iNodeL = 1,numNodesRankPar

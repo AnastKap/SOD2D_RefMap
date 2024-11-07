@@ -4,7 +4,7 @@ module mod_bc_routines
    use mod_numerical_params
    use mod_comms
    use mod_comms_boundaries
-   use mod_nvtx
+   use mod_gpu_tracer
 
    implicit none
 
@@ -51,13 +51,13 @@ module mod_bc_routines
             !$acc end parallel loop
 
             if(mpi_size.ge.2) then
-               call nvtxStartRange("MPI_comms_tI")
+               call StartRange("MPI_comms_tI")
                call mpi_halo_max_boundary_update_real_iSendiRcv(aux_q2(:,1))
                call mpi_halo_max_boundary_update_real_iSendiRcv(aux_q2(:,2))
                call mpi_halo_max_boundary_update_real_iSendiRcv(aux_q2(:,3))
                call mpi_halo_max_boundary_update_real_iSendiRcv(aux_rho2(:))
                call mpi_halo_max_boundary_update_real_iSendiRcv(aux_E2(:))
-               call nvtxEndRange
+               call EndRange
             end if
 
             !$acc parallel loop  

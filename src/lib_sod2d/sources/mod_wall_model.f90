@@ -2,7 +2,7 @@ module mod_wall_model
 
    use mod_numerical_params
    
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_mpi
    use mod_mpi_mesh,only:mesh_a2ij
    use elem_qua

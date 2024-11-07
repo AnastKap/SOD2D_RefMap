@@ -5,7 +5,7 @@ module mod_comms_performance
    use mod_hdf5
 #ifndef NOACC
    use openacc
-   use mod_nvtx
+   use mod_gpu_tracer
 #endif
 
 #define _ONLYBUFFERS_ 1
@@ -797,13 +797,13 @@ contains
 
       do iter=1,numIters
 
-         !call nvtxStartRange("saxpy op")
+         !call StartRange("saxpy op")
          call saxpy(numNodesRankPar,res_rfield,alpha,aux_rfield)
-         !call nvtxEndRange
+         !call EndRange
 
-         !call nvtxStartRange("comms")
+         !call StartRange("comms")
          call update_and_comm_realField(res_rfield)
-         !call nvtxEndRange
+         !call EndRange
 
       end do
 
@@ -908,11 +908,11 @@ contains
       ngb_rank = merge(1, 0, mpi_rank.eq.0)
 
 
-      !call nvtxStartRange("full_loop")
+      !call StartRange("full_loop")
       !$acc data create(x(:)) copyout(y(:))
       do iter=1,numIters
 
-         !call nvtxStartRange("loop_data")
+         !call StartRange("loop_data")
          !$acc parallel loop
          do i=1,n
             x(i) = mpi_rank + 0.5
@@ -923,18 +923,18 @@ contains
          do i=1,n
             y(i) = 2.0*x(i)**2.+y(i)**2. - 2.0*x(i)**2.+y(i)**2. + (mpi_rank+1)*1.
          end do
-         !call nvtxEndRange
+         !call EndRange
 
-         !call nvtxStartRange("data_transfer")
+         !call StartRange("data_transfer")
          !$acc host_data use_device (y,x)
          call MPI_Sendrecv(y, n, mpi_datatype_real, ngb_rank, tag_send, &
                            x, n, mpi_datatype_real, ngb_rank, tag_recv, &
                            app_comm, MPI_STATUS_IGNORE, mpi_err)
          !$acc end host_data
-         !call nvtxEndRange
+         !call EndRange
 
       end do
-      !call nvtxEndRange
+      !call EndRange
       !$acc end data
 
       deallocate(x)
@@ -950,19 +950,19 @@ contains
 
       call alloc_vecs(N)
 
-      !call nvtxStartRange("crazy_loop")
+      !call StartRange("crazy_loop")
       do iter=1,numIters
 
-         !call nvtxStartRange("loop_data")
+         !call StartRange("loop_data")
          call do_crazy_loops(N)
-         !call nvtxEndRange
+         !call EndRange
 
-         !call nvtxStartRange("data_transfer")
+         !call StartRange("data_transfer")
          call do_crazy_comms(N)
-         !call nvtxEndRange
+         !call EndRange
 
       end do
-      !call nvtxEndRange
+      !call EndRange
 
       call dealloc_vecs()
 

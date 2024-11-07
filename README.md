@@ -20,6 +20,26 @@ The code depends on the following libraries:
 
 The HDF5 library must be properly compiled with the same compiler that will be used for the code. For example, if the code is compiled with the PGI compiler, then HDF5 must be compiled with the PGI compiler.
 
+## Using the containers
+
+### NVIDIA container
+
+### AMD container
+
+Build the container for the AMD GPUs with:
+
+```bash
+docker build -t amd-gmus-rocm -f Dockerfile-AMD .
+```
+
+Then, while being in the SOD2D root folder (this repository), run:
+
+```bash
+docker run --gpus all -dit --privileged --name amd-gpus-container -v `pwd`:/home/apps/sod2d amd-gpus-rocm
+```
+
+The container with name *amd-gpus-container* is ready to execute commands.
+
 ## Building
 
 The code is built using CMake. The following commands will build the code in the `build` directory:

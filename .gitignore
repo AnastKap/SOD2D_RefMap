@@ -6,6 +6,7 @@
 
 # Temporary ignores
 /mesh_*
+/testcases/
 
 # Ignore weird files
 *.swp

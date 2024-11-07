@@ -1,7 +1,7 @@
 module mass_matrix
 
 	use mod_numerical_params
-	use mod_nvtx
+	use mod_gpu_tracer
 	use mod_mpi
 	use mod_mpi_mesh
 	use mod_comms
@@ -32,9 +32,9 @@ module mass_matrix
 			!$acc end parallel loop
 			
 			if(mpi_size.ge.2) then
-				call nvtxStartRange("MPI_comms_mass")
+				call StartRange("MPI_comms_mass")
 				call mpi_halo_atomic_update_real(Ml)
-				call nvtxEndRange
+				call EndRange
 			end if
 			
 			!$acc update host(Ml(:))

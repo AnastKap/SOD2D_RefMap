@@ -1,6 +1,6 @@
 module elem_convec
 
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_numerical_params
    
    use mod_maths
@@ -40,7 +40,7 @@ module elem_convec
             real(rp)                 :: ul(nnode,ndime), ql(nnode,ndime), rhol(nnode), prl(nnode),El(nnode),fel(nnode,ndime),fl(nnode,ndime,ndime),fuul(nnode,ndime,ndime),divFuu(ndime)
             real(rp), dimension(porder+1) :: dlxi_ip, dleta_ip, dlzeta_ip
 
-            call nvtxStartRange("Full convection")
+            call StartRange("Full convection")
             !$acc kernels
             Rmom(:,:) = 0.0_rp
             Rmass(:) = 0.0_rp
@@ -203,7 +203,7 @@ module elem_convec
                end do
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
          end subroutine full_convec_ijk_H
 
@@ -231,7 +231,7 @@ module elem_convec
             real(rp)                 :: ul(nnode,ndime), ql(nnode,ndime), rhol(nnode), prl(nnode),El(nnode),fel(nnode,ndime),fl(nnode,ndime,ndime),fuul(nnode,ndime,ndime),divFuu(ndime),REl(nnode),fuel(nnode,ndime),kl(nnode),fkl(nnode,ndime),fukl(nnode,ndime),Rkl(nnode)
             real(rp), dimension(porder+1) :: dlxi_ip, dleta_ip, dlzeta_ip
 
-            call nvtxStartRange("Full convection")
+            call StartRange("Full convection")
             !$acc kernels
             Rmom(:,:) = 0.0_rp
             Rmass(:) = 0.0_rp
@@ -455,7 +455,7 @@ module elem_convec
                end do
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
          end subroutine full_convec_ijk
 
@@ -481,7 +481,7 @@ module elem_convec
             real(rp)                 :: ul(nnode,ndime), fel(nnode,ndime), etal(nnode), Re(nnode)
             real(rp), dimension(porder+1) :: dlxi_ip, dleta_ip, dlzeta_ip
 
-            call nvtxStartRange("Generic Convection")
+            call StartRange("Generic Convection")
             !$acc kernels
             Rconvec(:) = 0.0_rp
             !$acc end kernels
@@ -565,7 +565,7 @@ module elem_convec
                end do
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
          end subroutine generic_scalar_convec_ijk
 
@@ -592,7 +592,7 @@ module elem_convec
             real(rp)                :: ul(nnode,ndime), ql(nnode,ndime), rhol(nnode), prl(nnode),El(nnode),fel(nnode,ndime),fl(nnode,ndime,ndime)
             real(rp), dimension(porder+1) :: dlxi_ip, dleta_ip, dlzeta_ip
 
-            call nvtxStartRange("Full convection")
+            call StartRange("Full convection")
             !$acc kernels
             Rmom(:,:) = 0.0_rp
             Rmass(:) = 0.0_rp
@@ -718,7 +718,7 @@ module elem_convec
                end do
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
          end subroutine full_convec_ijk_jacobian
 end module elem_convec

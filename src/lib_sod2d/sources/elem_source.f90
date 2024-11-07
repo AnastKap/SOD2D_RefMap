@@ -1,7 +1,7 @@
 module elem_source
 
    use mod_numerical_params
-   use mod_nvtx
+   use mod_gpu_tracer
    
    use mod_mpi
    use mod_mpi_mesh
@@ -32,7 +32,7 @@ contains
       integer(4)                :: ielem, igaus, idime, inode
       real(rp)                   :: Re(nnode,ndime)
 
-      call nvtxStartRange("Momentum source term")
+      call StartRange("Momentum source term")
 
       !oriol: I will assue that you will call
       !this subroutine at least having convection so Rmom is
@@ -50,7 +50,7 @@ contains
          end do
       end do
       !$acc end parallel loop
-      call nvtxEndRange
+      call EndRange
 
    end subroutine mom_source_const_vect
 

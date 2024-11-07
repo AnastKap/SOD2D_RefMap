@@ -1,6 +1,6 @@
 module elem_diffu
 
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_numerical_params
    
    use mod_mpi
@@ -33,7 +33,7 @@ module elem_diffu
              real(rp)                :: tauXl(nnode,ndime), tauYl(nnode,ndime), tauZl(nnode,ndime)
              real(rp)                :: gradTl(nnode,ndime),gradRhol(nnode,ndime),tauUl(nnode,ndime)
 
-             call nvtxStartRange("Full diffusion")
+             call StartRange("Full diffusion")
              twoThirds = 2.0_rp/3.0_rp
              !$acc kernels
              Rmass(:) = 0.0_rp
@@ -194,6 +194,6 @@ module elem_diffu
                 end do
              end do
              !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
         end subroutine full_diffusion_ijk
 end module elem_diffu

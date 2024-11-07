@@ -1,6 +1,6 @@
 module elem_convec_incomp
 
-   use mod_nvtx
+   use mod_gpu_tracer
    use mod_numerical_params
    
    use mod_maths
@@ -36,7 +36,7 @@ module elem_convec_incomp
             real(rp)                 :: ul(nnode,ndime), ql(nnode,ndime), rhol(nnode), fl(nnode,ndime,ndime),ql_star(nnode,ndime)
             real(rp), dimension(porder+1) :: dlxi_ip, dleta_ip, dlzeta_ip
 
-            call nvtxStartRange("Full convection")
+            call StartRange("Full convection")
             !$acc kernels
             Rmom(:,:) = 0.0_rp
             !$acc end kernels
@@ -131,7 +131,7 @@ module elem_convec_incomp
                end do
             end do
             !$acc end parallel loop
-            call nvtxEndRange
+            call EndRange
 
          end subroutine full_convec_ijk_incomp     
 end module elem_convec_incomp
