@@ -3,7 +3,7 @@
 #  define C_RANGE_PUSH_EX     "nvtxRangePushEx"
 #  define C_RANGE_POP         "nvtxRangePop"
 #elif defined(_USE_ROCTX)
-#  define C_RANGE_PUSH        "rctxRangePushA"
+#  define C_RANGE_PUSH        "roctxRangePushA"
 #  define C_RANGE_PUSH_EX     "roctxRangePushEx"
 #  define C_RANGE_POP         "roctxRangePop"
 #elif defined(_USE_ROCTX)
