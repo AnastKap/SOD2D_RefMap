@@ -9,9 +9,11 @@ ARG PATH0="${PATH}"
 ARG LD_LIBRARY_PATH0="${LD_LIBRARY_PATH}"
 
 ## Update and install basic system packages
+## Note: libtool-bin is needed; without it libtool needed by hdf5 is
+## not in the path
 RUN apt-get -y update && apt-get -y upgrade
 RUN apt-get install -y build-essential git cmake gfortran ninja-build wget \
-        llvm clang flang flex pkg-config locales autoconf libtool gdb
+        llvm flex pkg-config locales autoconf libtool libtool-bin gdb
 RUN locale-gen en_US.UTF-8
 
 ## Set the working dir to home
@@ -45,30 +47,24 @@ RUN git clone --recursive https://github.com/open-mpi/ompi.git \
 RUN ./autogen.pl
 RUN mkdir build
 WORKDIR /home/apps/compilers/openMPI/5.0.x/build
-#RUN tar -xvzf openmpi-4.1.4.tar.gz
-#WORKDIR /home/apps/compilers/openMPI/4.1.4/openmpi-4.1.4
-#RUN ./autogen.pl --force
-#RUN mkdir build-ucx
-#WORKDIR /home/apps/compilers/openMPI/4.1.4/openmpi-4.1.4/build-ucx
-#RUN ../configure --prefix=/apps/compilers/openMPI/4.1.4/gnu --with-ucx=/apps/ucx/v1.17.0
-#WORKDIR /home/apps/compilers/openMPI/4.1.4/openmpi-4.1.4
 RUN ../configure --with-rocm=/opt/rocm-6.2.1 --with-ucx=/apps/ucx/v1.14.1 \
             --enable-mca-no-build=btl-uct --prefix=/apps/compilers/openMPI/5.0.x/gnu \
-            --enable-mpi1-compatibility CC=clang CXX=clang++ FC=flang
+            --enable-mpi1-compatibility CC=amdclang CXX=amdclang++ FC=amdflang
 RUN make -j 12 && make install
 # Set the PATH and LD_LIBRARY_PATH environment variables
 ENV PATH="/apps/compilers/openMPI/5.0.x/gnu/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/opt/rocm-6.2.1/llvm/lib:/apps/compilers/openMPI/5.0.x/gnu/lib:${LD_LIBRARY_PATH}"
 
-## Download and install HDF5-1.12.0 enabling parallel and fortran support
+## Download and install HDF5-1.14.5 enabling parallel and fortran support
 WORKDIR /home/apps/libraries
 RUN mkdir -p hdf5/1.14.5
 WORKDIR /home/apps/libraries/hdf5/1.14.5
 RUN wget https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.5.tar.gz
 RUN tar -xvzf hdf5_1.14.5.tar.gz
 WORKDIR /home/apps/libraries/hdf5/1.14.5/hdf5-hdf5_1.14.5
-RUN CPP=cpp CC=mpicc CXX=mpicxx FC=mpif90 CFLAGS=-fPIC FCFLAGS=-fPIC ./configure --prefix=/home/apps/libraries/hdf5/1.14.5/gnu --enable-threadsafe --enable-cxx --enable-fortran --enable-unsupported --enable-parallel
-RUN make -j 12 && make install
+RUN sed -i '39952s|.*|      if (test "X$FC_BASENAME" = "Xflang") \|\| (test -n "$FC_BASENAME --version \| grep clang"); then|' configure
+RUN CPP=mpic++ CC=mpicc CXX=mpicxx FC=mpif90 CFLAGS=-fPIC FCFLAGS=-fPIC LDFLAGS=-lquadmath ./configure --prefix=/home/apps/libraries/hdf5/1.14.5/gnu --enable-threadsafe --enable-cxx --enable-fortran --enable-unsupported --enable-parallel --disable-silent-rules
+RUN make -j 12 --trace && make install
 # Set the PATH and LD_LIBRARY_PATH environment variables
 ENV PATH="/home/apps/libraries/hdf5/1.14.5/gnu/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/home/apps/libraries/hdf5/1.14.5/gnu/lib:${LD_LIBRARY_PATH}"
