@@ -24,6 +24,7 @@ if(STORE_INTERMEDIATE_FILES)
       POST_BUILD
       COMMAND for i in `find . -name *.dot`\; do rm $$i \; done
       COMMAND for i in `find . -regex .*.gpu`\; do opt -dot-cfg-only $$i 2> /dev/null \; done
+      COMMAND for i in `find . -regex .*-openmp-.*.ll`\; do opt --passes="dot-cfg-only" -o /dev/null 2> /dev/null $$i \; done || exit 0
       COMMENT "Creating CFG graphs of GPU kernels"
    )
 endif()

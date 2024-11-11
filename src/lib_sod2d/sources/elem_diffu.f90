@@ -40,7 +40,8 @@ module elem_diffu
              Rmom(:,:) = 0.0_rp
              Rener(:) = 0.0_rp
              !$acc end kernels
-
+             
+             !$omp target
              !$acc parallel loop gang  private(ipoin,ul,Teml,rhol,rhonl,mufluidl,gradRhol,gradTl,tauUl,tauXl,tauYl,tauZl)
              do ielem = 1,nelem
                 !$acc loop vector
@@ -194,6 +195,7 @@ module elem_diffu
                 end do
              end do
              !$acc end parallel loop
+             !$omp end target
             call EndRange
         end subroutine full_diffusion_ijk
 end module elem_diffu
