@@ -4,18 +4,20 @@
 #  define C_RANGE_POP         "nvtxRangePop"
 #elif defined(_USE_ROCTX)
 #  define C_RANGE_PUSH        "roctxRangePushA"
-#  define C_RANGE_PUSH_EX     "roctxRangePushEx"
+#  define C_RANGE_PUSH_EX     "roctxRangePushA"
 #  define C_RANGE_POP         "roctxRangePop"
 #elif defined(_USE_ROCTX)
 #endif
 
 
 
-#if !(defined(NOACC) || defined(NOOPENMP))
+#if !(defined(NOACC) && defined(NOOPENMP))
 module mod_gpu_tracer
 
    use iso_c_binding
+#ifdef _USE_NVTX
    use cudafor
+#endif
    implicit none
 
    integer, private :: col(7) = [Z'0000ff00', Z'000000ff', Z'00ffff00', Z'00ff00ff', Z'0000ffff', &
@@ -36,6 +38,15 @@ module mod_gpu_tracer
       integer(C_INT) :: messageType = 1  ! MESSAGE_TYPE_ASCII     = 1
       type(C_PTR) :: message  ! ascii char
    end type EventAttributes
+
+#ifdef _USE_ROCTX
+   interface
+        function hipDeviceSynchronize() bind(C, name="hipDeviceSynchronize")
+            use iso_c_binding
+            integer(c_int) :: hipDeviceSynchronize
+        end function hipDeviceSynchronize
+    end interface
+#endif
 
 #if defined(_USE_NVTX) || defined(_USE_ROCTX)
    interface RangePush
@@ -67,7 +78,11 @@ contains
 #if defined(_USE_NVTX) || defined(_USE_ROCTX)
       type(EventAttributes) :: event
       integer :: istat
+#ifdef _USE_NVTX
       istat = cudaDeviceSynchronize()
+#elif defined(_USE_ROCTX)
+      istat = hipDeviceSynchronize()
+#endif
 
       tempName = trim(name)//c_null_char
 
@@ -84,7 +99,11 @@ contains
    subroutine EndRange
 #if defined(_USE_NVTX) || defined(_USE_ROCTX)
       integer :: istat
+#ifdef _USE_NVTX
       istat = cudaDeviceSynchronize()
+#elif defined(_USE_ROCTX)
+      istat = hipDeviceSynchronize()
+#endif
       call RangePop
 #endif
    end subroutine EndRange
